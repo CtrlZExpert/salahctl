@@ -212,6 +212,8 @@ func main() {
 		showPrayerTimes(config)
 	case "config":
 		runConfig()
+	case "current":
+		showCurrentPrayer(config)
 	default:
 		fmt.Printf("Error: command %q not found\n", command)
 		fmt.Println()
@@ -219,40 +221,104 @@ func main() {
 
 }
 
-func showPrayerTimes(c Config) {
-	now := time.Now()
-	date := data.NewDateComponents(now)
+func calculatePrayerTimeForDate(c Config, date time.Time) (*calc.PrayerTimes, error) {
+
+	dateComponents := data.NewDateComponents(date)
 	coordinate, err := util.NewCoordinates(c.Latitude, c.Longitude)
 	if err != nil {
-		fmt.Println("Error:", err)
-		return
+		return nil, err
 	}
 	method, err := parseCalculationMethod(c.Method)
 	if err != nil {
-		fmt.Println("Error:", err)
-		return
+		return nil, err
 	}
 	params := calc.GetMethodParameters(method)
 	asrMethod, err := parseAsrMethod(c.AsrMethod)
 	if err != nil {
-		fmt.Println("Error:", err)
-		return
+		return nil, err
 	}
 
 	params.Madhab = asrMethod
 
-	prayerTimes, err := calc.NewPrayerTimes(coordinate, date, params)
+	prayerTimes, err := calc.NewPrayerTimes(coordinate, dateComponents, params)
 	if err != nil {
-		fmt.Println("Error:", err)
-		return
+		return nil, err
 	}
 
 	err = prayerTimes.SetTimeZone(c.Timezone)
 	if err != nil {
+		return nil, err
+	}
+	return prayerTimes, nil
+}
+
+func calculatePrayerTimes(c Config) (*calc.PrayerTimes, error) {
+	now := time.Now()
+	prayerTimes, err := calculatePrayerTimeForDate(c, now)
+	if err != nil {
+		return prayerTimes, err
+	}
+	return prayerTimes, nil
+}
+
+func showCurrentPrayer(c Config) {
+	prayerTimes, err := calculatePrayerTimes(c)
+	if err != nil {
 		fmt.Println("Error:", err)
 		return
 	}
+	now := time.Now()
+	current := prayerTimes.CurrentPrayer(now)
+	next := prayerTimes.NextPrayer(now)
+	nextTime := prayerTimes.TimeForPrayer(next)
+	if next == calc.NO_PRAYER {
+		tomorrow := now.AddDate(0, 0, 1)
+		tomorrowPrayerTimes, err := calculatePrayerTimeForDate(c, tomorrow)
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+		next = calc.FAJR
+		nextTime = tomorrowPrayerTimes.Fajr
+	}
+	remaining := nextTime.Sub(now).Truncate(time.Minute)
+	hours := int(remaining.Hours())
+	minutes := int(remaining.Minutes()) % 60
+	fmt.Println()
+	fmt.Printf("Current prayer: %s\n", prayerName(current))
+	fmt.Printf("Next Prayer: %s at %s\n", prayerName(next), nextTime.Format("3:04 PM"))
+	fmt.Printf("Time remaining: %dh %dm\n", hours, minutes)
+}
 
+func prayerName(prayer calc.Prayer) string {
+	switch prayer {
+	case calc.FAJR:
+		return "Fajr"
+	case calc.SUNRISE:
+		return "None"
+	case calc.DHUHR:
+		return "Dhuhr"
+	case calc.ASR:
+		return "Asr"
+	case calc.MAGHRIB:
+		return "Maghrib"
+	case calc.ISHA:
+		return "Isha"
+	case calc.NO_PRAYER:
+		return "None"
+	default:
+		return "Unknown"
+
+	}
+}
+
+func showPrayerTimes(c Config) {
+	prayerTimes, err := calculatePrayerTimes(c)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	fmt.Println()
 	fmt.Printf("Fajr:    %s\n", prayerTimes.Fajr.Format("3:04 PM"))
 	fmt.Printf("Sunrise: %s\n", prayerTimes.Sunrise.Format("3:04 PM"))
 	fmt.Printf("Dhuhr:   %s\n", prayerTimes.Dhuhr.Format("3:04 PM"))

@@ -218,6 +218,12 @@ func main() {
 		showNextPrayer(config)
 	case "tomorrow":
 		showTomorrowPrayersTimes(config)
+	case "date":
+		if len(os.Args) != 3 {
+			fmt.Println("Usage: salahctl date YYYY-MM-DD")
+			return
+		}
+		showPrayerTimesByDate(config, os.Args[2])
 	default:
 		fmt.Printf("Error: command %q not found\n", command)
 		fmt.Println()
@@ -330,12 +336,36 @@ func showTomorrowPrayersTimes(c Config) {
 	}
 	fmt.Println()
 	fmt.Println("Tomorrow")
-	fmt.Printf("Fajr:    %s\n", prayerTimesTomorrow.Fajr.Format("3:04 PM"))
-	fmt.Printf("Sunrise: %s\n", prayerTimesTomorrow.Sunrise.Format("3:04 PM"))
-	fmt.Printf("Dhuhr:   %s\n", prayerTimesTomorrow.Dhuhr.Format("3:04 PM"))
-	fmt.Printf("Asr:     %s\n", prayerTimesTomorrow.Asr.Format("3:04 PM"))
-	fmt.Printf("Maghrib: %s\n", prayerTimesTomorrow.Maghrib.Format("3:04 PM"))
-	fmt.Printf("Isha:    %s\n", prayerTimesTomorrow.Isha.Format("3:04 PM"))
+	fmt.Println()
+	printPrayerTimes(prayerTimesTomorrow)
+}
+
+func showPrayerTimesByDate(c Config, dateString string) {
+
+	date, err := time.Parse("2006-01-02", dateString)
+	if err != nil {
+		fmt.Println("Invalid date format. Use YYYY-MM-DD")
+		return
+	}
+	prayerTimesByDate, err := calculatePrayerTimeForDate(c, date)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	fmt.Println()
+	fmt.Println(date.Format("Monday, January 2, 2006"))
+	fmt.Println()
+	printPrayerTimes(prayerTimesByDate)
+
+}
+
+func printPrayerTimes(prayerTimes *calc.PrayerTimes) {
+	fmt.Printf("Fajr:    %s\n", prayerTimes.Fajr.Format("3:04 PM"))
+	fmt.Printf("Sunrise: %s\n", prayerTimes.Sunrise.Format("3:04 PM"))
+	fmt.Printf("Dhuhr:   %s\n", prayerTimes.Dhuhr.Format("3:04 PM"))
+	fmt.Printf("Asr:     %s\n", prayerTimes.Asr.Format("3:04 PM"))
+	fmt.Printf("Maghrib: %s\n", prayerTimes.Maghrib.Format("3:04 PM"))
+	fmt.Printf("Isha:    %s\n", prayerTimes.Isha.Format("3:04 PM"))
 
 }
 
@@ -368,13 +398,7 @@ func showPrayerTimes(c Config) {
 		return
 	}
 	fmt.Println()
-	fmt.Printf("Fajr:    %s\n", prayerTimes.Fajr.Format("3:04 PM"))
-	fmt.Printf("Sunrise: %s\n", prayerTimes.Sunrise.Format("3:04 PM"))
-	fmt.Printf("Dhuhr:   %s\n", prayerTimes.Dhuhr.Format("3:04 PM"))
-	fmt.Printf("Asr:     %s\n", prayerTimes.Asr.Format("3:04 PM"))
-	fmt.Printf("Maghrib: %s\n", prayerTimes.Maghrib.Format("3:04 PM"))
-	fmt.Printf("Isha:    %s\n", prayerTimes.Isha.Format("3:04 PM"))
-
+	printPrayerTimes(prayerTimes)
 }
 
 func runConfig() {

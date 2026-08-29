@@ -214,6 +214,8 @@ func main() {
 		runConfig()
 	case "current":
 		showCurrentPrayer(config)
+	case "next":
+		showNextPrayer(config)
 	default:
 		fmt.Printf("Error: command %q not found\n", command)
 		fmt.Println()
@@ -261,6 +263,28 @@ func calculatePrayerTimes(c Config) (*calc.PrayerTimes, error) {
 	return prayerTimes, nil
 }
 
+func getNextPrayer(c Config) (calc.Prayer, time.Time, time.Duration, error) {
+	prayerTimes, err := calculatePrayerTimes(c)
+	if err != nil {
+		return calc.NO_PRAYER, time.Time{}, 0, err
+	}
+	now := time.Now()
+	next := prayerTimes.NextPrayer(now)
+	nextTime := prayerTimes.TimeForPrayer(next)
+	if next == calc.NO_PRAYER {
+		tomorrow := now.AddDate(0, 0, 1)
+		tomorrowPrayerTimes, err := calculatePrayerTimeForDate(c, tomorrow)
+		if err != nil {
+			return calc.NO_PRAYER, time.Time{}, 0, err
+		}
+		next = calc.FAJR
+		nextTime = tomorrowPrayerTimes.Fajr
+	}
+	remaining := nextTime.Sub(now).Truncate(time.Minute)
+
+	return next, nextTime, remaining, nil
+}
+
 func showCurrentPrayer(c Config) {
 	prayerTimes, err := calculatePrayerTimes(c)
 	if err != nil {
@@ -269,23 +293,28 @@ func showCurrentPrayer(c Config) {
 	}
 	now := time.Now()
 	current := prayerTimes.CurrentPrayer(now)
-	next := prayerTimes.NextPrayer(now)
-	nextTime := prayerTimes.TimeForPrayer(next)
-	if next == calc.NO_PRAYER {
-		tomorrow := now.AddDate(0, 0, 1)
-		tomorrowPrayerTimes, err := calculatePrayerTimeForDate(c, tomorrow)
-		if err != nil {
-			fmt.Println("Error:", err)
-			return
-		}
-		next = calc.FAJR
-		nextTime = tomorrowPrayerTimes.Fajr
+	next, nextTime, remaining, err := getNextPrayer(c)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
 	}
-	remaining := nextTime.Sub(now).Truncate(time.Minute)
 	hours := int(remaining.Hours())
 	minutes := int(remaining.Minutes()) % 60
 	fmt.Println()
 	fmt.Printf("Current prayer: %s\n", prayerName(current))
+	fmt.Printf("Next Prayer: %s at %s\n", prayerName(next), nextTime.Format("3:04 PM"))
+	fmt.Printf("Time remaining: %dh %dm\n", hours, minutes)
+}
+
+func showNextPrayer(c Config) {
+	next, nextTime, remaining, err := getNextPrayer(c)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	hours := int(remaining.Hours())
+	minutes := int(remaining.Minutes()) % 60
+	fmt.Println()
 	fmt.Printf("Next Prayer: %s at %s\n", prayerName(next), nextTime.Format("3:04 PM"))
 	fmt.Printf("Time remaining: %dh %dm\n", hours, minutes)
 }

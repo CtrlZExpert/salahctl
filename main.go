@@ -216,6 +216,8 @@ func main() {
 		showCurrentPrayer(config)
 	case "next":
 		showNextPrayer(config)
+	case "tomorrow":
+		showTomorrowPrayersTimes(config)
 	default:
 		fmt.Printf("Error: command %q not found\n", command)
 		fmt.Println()
@@ -317,6 +319,24 @@ func showNextPrayer(c Config) {
 	fmt.Println()
 	fmt.Printf("Next Prayer: %s at %s\n", prayerName(next), nextTime.Format("3:04 PM"))
 	fmt.Printf("Time remaining: %dh %dm\n", hours, minutes)
+}
+
+func showTomorrowPrayersTimes(c Config) {
+	tomorrow := time.Now().AddDate(0, 0, 1)
+	prayerTimesTomorrow, err := calculatePrayerTimeForDate(c, tomorrow)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	fmt.Println()
+	fmt.Println("Tomorrow")
+	fmt.Printf("Fajr:    %s\n", prayerTimesTomorrow.Fajr.Format("3:04 PM"))
+	fmt.Printf("Sunrise: %s\n", prayerTimesTomorrow.Sunrise.Format("3:04 PM"))
+	fmt.Printf("Dhuhr:   %s\n", prayerTimesTomorrow.Dhuhr.Format("3:04 PM"))
+	fmt.Printf("Asr:     %s\n", prayerTimesTomorrow.Asr.Format("3:04 PM"))
+	fmt.Printf("Maghrib: %s\n", prayerTimesTomorrow.Maghrib.Format("3:04 PM"))
+	fmt.Printf("Isha:    %s\n", prayerTimesTomorrow.Isha.Format("3:04 PM"))
+
 }
 
 func prayerName(prayer calc.Prayer) string {

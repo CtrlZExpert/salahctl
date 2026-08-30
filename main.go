@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -33,6 +34,35 @@ type LocationResult struct {
 	DisplayName string `json:"display_name"`
 }
 
+func validateArgCount(actual int, expected int, usage string) bool {
+	if actual != expected {
+		fmt.Println()
+		fmt.Println(usage)
+		fmt.Println()
+		return false
+	}
+	return true
+
+}
+
+func usageFor(command string) string {
+	if command == "date" {
+		usage := fmt.Sprintf("Usage: salahctl %s YYYY-MM-DD", command)
+		return usage
+	}
+	if command == "config" {
+		return "Usage: salahctl config [show|location|method|asr]"
+	}
+	if command == "-h" || command == "--help" {
+		return "Usage: salahctl --help"
+	}
+	if command == "-v" || command == "--version" {
+		return "Usage: salahctl --version"
+	}
+
+	usage := fmt.Sprintf("Usage: salahctl %s", command)
+	return usage
+}
 func loadConfig() (Config, error) {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
@@ -198,7 +228,10 @@ func main() {
 	if len(os.Args) < 2 {
 		fmt.Println("Error: missing a command")
 		fmt.Println()
-		fmt.Println("Usage: salahctl <command>")
+		fmt.Println("Usage:")
+		fmt.Println("  salahctl <command>")
+		fmt.Println()
+		fmt.Println("Run 'salahctl --help' for more information")
 		return
 	}
 	config, err := loadConfig()
@@ -207,26 +240,86 @@ func main() {
 		return
 	}
 	command := os.Args[1]
+	usage := usageFor(command)
 	switch command {
 	case "today":
+		isValidCount := validateArgCount(len(os.Args), 2, usage)
+		if !isValidCount {
+			return
+		}
 		showPrayerTimes(config)
 	case "config":
-		runConfig()
+		if len(os.Args) == 2 {
+			runConfig()
+			return
+
+		}
+
+		isValidCount := validateArgCount(len(os.Args), 3, usage)
+		if !isValidCount {
+			return
+		}
+
+		configCommand := os.Args[2]
+		switch configCommand {
+		case "show":
+			showConfig(config)
+		case "location":
+			updateLocation(config)
+		case "method":
+			updateCalculationMethod(config)
+		case "asr":
+			updateAsrMethod(config)
+		default:
+			fmt.Printf("Error: unknown config command %q\n", configCommand)
+			fmt.Println()
+			fmt.Println("Usage: salahctl config [show|location|method|asr]")
+		}
 	case "current":
+		isValidCount := validateArgCount(len(os.Args), 2, usage)
+		if !isValidCount {
+			return
+		}
 		showCurrentPrayer(config)
 	case "next":
+		isValidCount := validateArgCount(len(os.Args), 2, usage)
+		if !isValidCount {
+			return
+		}
 		showNextPrayer(config)
 	case "tomorrow":
+		isValidCount := validateArgCount(len(os.Args), 2, usage)
+		if !isValidCount {
+			return
+		}
 		showTomorrowPrayersTimes(config)
 	case "date":
+		isValidCount := validateArgCount(len(os.Args), 3, usage)
+		if !isValidCount {
+			return
+		}
 		if len(os.Args) != 3 {
 			fmt.Println("Usage: salahctl date YYYY-MM-DD")
 			return
 		}
+
 		showPrayerTimesByDate(config, os.Args[2])
+	case "--help", "-h":
+		isValidCount := validateArgCount(len(os.Args), 2, usage)
+		if !isValidCount {
+			return
+		}
+		showHelp()
+	case "--version", "-v":
+		isValidCount := validateArgCount(len(os.Args), 2, "Usage: salahctl --version")
+		if !isValidCount {
+			return
+		}
+		showVersion()
 	default:
-		fmt.Printf("Error: command %q not found\n", command)
+		fmt.Printf("Error: unknown command %q\n", command)
 		fmt.Println()
+		fmt.Println("Run 'salahctl --help' for more information")
 	}
 
 }
@@ -309,7 +402,7 @@ func showCurrentPrayer(c Config) {
 	hours := int(remaining.Hours())
 	minutes := int(remaining.Minutes()) % 60
 	fmt.Println()
-	fmt.Printf("Current prayer: %s\n", prayerName(current))
+	fmt.Printf("Current Prayer: %s\n", prayerName(current))
 	fmt.Printf("Next Prayer: %s at %s\n", prayerName(next), nextTime.Format("3:04 PM"))
 	fmt.Printf("Time remaining: %dh %dm\n", hours, minutes)
 }
@@ -400,65 +493,49 @@ func showPrayerTimes(c Config) {
 	fmt.Println()
 	printPrayerTimes(prayerTimes)
 }
+func showConfig(config Config) {
+	fmt.Printf("Latitude:   %f\n", config.Latitude)
+	fmt.Printf("Longitude:   %f\n", config.Longitude)
+	fmt.Printf("Timezone:    %s\n", config.Timezone)
+	fmt.Printf("Method:     %s\n", config.Method)
+	fmt.Printf("Asr Method: %s\n", config.AsrMethod)
+}
+func showHelp() {
+	fmt.Print(`salahctl - Prayer times from the command line
+
+Usage:
+  salahctl <command>
+
+Commands:
+  today    		Show today's prayer times
+  tomorrow		Show tomorrow's prayer times
+  current		Show the current prayer
+  next			Show the next prayer and countdown
+  date YYYY-MM-DD	Show prayer times for a specific date
+  config		Run full configuration setup
+  config show		Show current configuration
+  config location	Update location
+  config method		Update calculation method
+  config asr		Update Asr method
+
+Options:
+  -h, --help		Show this help
+  -v, --version		Show version
+`)
+}
+
+func showVersion() {
+	fmt.Println("Version: 0.1.0")
+	fmt.Println()
+}
 
 func runConfig() {
-	reader := bufio.NewReader(os.Stdin)
-
-	fmt.Print("Location (city, state/country): ")
-
-	location, err := reader.ReadString('\n')
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-	location = strings.TrimSpace(location)
-	results, err := lookupLocation(location)
+	latitude, longitude, timezone, err := chooseLocation()
 	if err != nil {
 		fmt.Println("Error:", err)
 		return
 	}
 
-	for i, result := range results {
-		fmt.Printf("%d. %s\n", i+1, result.DisplayName)
-	}
-
-	fmt.Print("Choose location: ")
-	choiceInput, err := reader.ReadString('\n')
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-	choiceInput = strings.TrimSpace(choiceInput)
-	choice, err := strconv.Atoi(choiceInput)
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-
-	if choice < 1 || choice > len(results) {
-		fmt.Println("Error: invalid location choice")
-		return
-	}
-	selected := results[choice-1]
-
-	latitude, err := strconv.ParseFloat(selected.Lat, 64)
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-	longitude, err := strconv.ParseFloat(selected.Lon, 64)
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-
-	finder, err := tzf.NewDefaultFinder()
-	if err != nil {
-		fmt.Println("Error:", err)
-		return
-	}
-
-	timezone := finder.GetTimezoneName(longitude, latitude)
 	method := chooseCalculationMethod()
 	asrMethod := chooseAsrMethod()
 
@@ -477,5 +554,102 @@ func runConfig() {
 	}
 
 	fmt.Println("Configuration saved successfully")
+
+}
+
+func chooseLocation() (float64, float64, string, error) {
+	reader := bufio.NewReader(os.Stdin)
+
+	fmt.Print("Location (city, state/country): ")
+
+	location, err := reader.ReadString('\n')
+	if err != nil {
+		return 0.0, 0.0, "", err
+
+	}
+	location = strings.TrimSpace(location)
+	results, err := lookupLocation(location)
+	if err != nil {
+		return 0.0, 0.0, "", err
+
+	}
+
+	for i, result := range results {
+		fmt.Printf("%d. %s\n", i+1, result.DisplayName)
+	}
+
+	fmt.Print("Choose location: ")
+	choiceInput, err := reader.ReadString('\n')
+	if err != nil {
+		return 0.0, 0.0, "", err
+	}
+	choiceInput = strings.TrimSpace(choiceInput)
+	choice, err := strconv.Atoi(choiceInput)
+	if err != nil {
+		return 0.0, 0.0, "", err
+	}
+	if choice < 1 || choice > len(results) {
+		return 0.0, 0.0, "", errors.New("Invalid location choice")
+	}
+	selected := results[choice-1]
+
+	latitude, err := strconv.ParseFloat(selected.Lat, 64)
+	if err != nil {
+		return 0.0, 0.0, "", err
+	}
+	longitude, err := strconv.ParseFloat(selected.Lon, 64)
+	if err != nil {
+		return 0.0, 0.0, "", err
+
+	}
+	finder, err := tzf.NewDefaultFinder()
+	if err != nil {
+		return 0.0, 0.0, "", err
+	}
+	timezone := finder.GetTimezoneName(longitude, latitude)
+
+	return latitude, longitude, timezone, nil
+}
+
+func updateLocation(config Config) {
+	latitude, longitude, timezone, err := chooseLocation()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	config.Latitude = latitude
+	config.Longitude = longitude
+	config.Timezone = timezone
+
+	err = saveConfig(config)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	fmt.Println("Location has successfully been updated")
+
+}
+
+func updateCalculationMethod(config Config) {
+	method := chooseCalculationMethod()
+	config.Method = method
+	err := saveConfig(config)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	fmt.Println("Method has successfully been updated")
+}
+
+func updateAsrMethod(config Config) {
+	asrMethod := chooseAsrMethod()
+	config.AsrMethod = asrMethod
+	err := saveConfig(config)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	fmt.Println("Asr Method has successfully been updated")
 
 }

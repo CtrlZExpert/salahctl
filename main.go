@@ -317,6 +317,12 @@ func main() {
 		}
 		prayerName := os.Args[2]
 		showPrayer(config, prayerName)
+	case "week":
+		isValidCount := validateArgCount(len(os.Args), 2, usage)
+		if !isValidCount {
+			return
+		}
+		showWeeklyPrayerTimes(config)
 
 	case "--help", "-h":
 		isValidCount := validateArgCount(len(os.Args), 2, usage)
@@ -495,6 +501,25 @@ func showPrayerTimesByDate(c Config, dateString string) {
 
 }
 
+func showWeeklyPrayerTimes(c Config) {
+	date := time.Now()
+
+	for i := 0; i < 7; i++ {
+		prayerTimes, err := calculatePrayerTimeForDate(c, date)
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+
+		fmt.Println(date.Format("Monday, January 2, 2006"))
+		fmt.Println()
+		printPrayerTimes(prayerTimes)
+		fmt.Println()
+
+		date = date.AddDate(0, 0, 1)
+	}
+}
+
 func showRemainingPrayers(config Config) {
 	prayerTimes, err := calculatePrayerTimes(config)
 	if err != nil {
@@ -588,6 +613,7 @@ Commands:
   tomorrow		Show tomorrow's prayer times
   current		Show the current prayer
   next			Show the next prayer and countdown
+  week			Show prayer times for the next 7 days
   date YYYY-MM-DD	Show prayer times for a specific date
   config		Run full configuration setup
   config show		Show current configuration

@@ -50,6 +50,10 @@ func usageFor(command string) string {
 		usage := fmt.Sprintf("Usage: salahctl %s YYYY-MM-DD", command)
 		return usage
 	}
+	if command == "prayer" {
+		usage := fmt.Sprintf("Usage: salahctl prayer <fajr|dhuhr|asr|maghrib|isha>")
+		return usage
+	}
 	if command == "config" {
 		return "Usage: salahctl config [show|location|method|asr]"
 	}
@@ -124,7 +128,7 @@ func parseAsrMethod(method string) (calc.AsrJuristicMethod, error) {
 	case "hanafi":
 		return calc.HANAFI, nil
 	default:
-		return 0, fmt.Errorf("unsupported calculation method: %q ", method)
+		return 0, fmt.Errorf("unsupported calculation  Asr method: %q ", method)
 	}
 }
 
@@ -298,10 +302,6 @@ func main() {
 		if !isValidCount {
 			return
 		}
-		if len(os.Args) != 3 {
-			fmt.Println("Usage: salahctl date YYYY-MM-DD")
-			return
-		}
 
 		showPrayerTimesByDate(config, os.Args[2])
 	case "remaining":
@@ -311,7 +311,7 @@ func main() {
 		}
 		showRemainingPrayers(config)
 	case "prayer":
-		isvalidcount := validateArgCount(len(os.Args), 3, "Usage: salahctl prayer <fajr|dhuhr|asr|maghrib|isha>")
+		isvalidcount := validateArgCount(len(os.Args), 3, usage)
 		if !isvalidcount {
 			return
 		}
@@ -377,11 +377,8 @@ func calculatePrayerTimeForDate(c Config, date time.Time) (*calc.PrayerTimes, er
 
 func calculatePrayerTimes(c Config) (*calc.PrayerTimes, error) {
 	now := time.Now()
-	prayerTimes, err := calculatePrayerTimeForDate(c, now)
-	if err != nil {
-		return prayerTimes, err
-	}
-	return prayerTimes, nil
+	return calculatePrayerTimeForDate(c, now)
+
 }
 
 func getNextPrayer(c Config) (calc.Prayer, time.Time, time.Duration, error) {
@@ -526,32 +523,34 @@ func showRemainingPrayers(config Config) {
 		fmt.Println("Error:", err)
 		return
 	}
+
 	now := time.Now()
+
+	prayers := []struct {
+		name string
+		time time.Time
+	}{
+		{"Fajr", prayerTimes.Fajr},
+		{"Dhuhr", prayerTimes.Dhuhr},
+		{"Asr", prayerTimes.Asr},
+		{"Maghrib", prayerTimes.Maghrib},
+		{"Isha", prayerTimes.Isha},
+	}
 
 	fmt.Println("Remaining Prayers")
 	fmt.Println()
 
-	if now.Before(prayerTimes.Fajr) {
-		fmt.Println("Fajr:", prayerTimes.Fajr.Format("3:04 PM"))
-	}
-	if now.Before(prayerTimes.Dhuhr) {
-		fmt.Println("Dhuhr:", prayerTimes.Dhuhr.Format("3:04 PM"))
-	}
-	if now.Before(prayerTimes.Asr) {
-		fmt.Println("Asr:", prayerTimes.Asr.Format("3:04 PM"))
-	}
-	if now.Before(prayerTimes.Maghrib) {
-		fmt.Println("Maghrib:", prayerTimes.Maghrib.Format("3:04 PM"))
-	}
-	if now.Before(prayerTimes.Isha) {
-		fmt.Println("Isha", prayerTimes.Isha.Format("3:04 PM"))
+	for _, prayer := range prayers {
+		if now.Before(prayer.time) {
+			fmt.Println(prayer.name+":", prayer.time.Format("3:04 PM"))
+		}
 	}
 
 	if now.After(prayerTimes.Isha) {
 		fmt.Println("All prayers are complete for today.")
 	}
-	fmt.Println()
 
+	fmt.Println()
 }
 
 func printPrayerTimes(prayerTimes *calc.PrayerTimes) {
@@ -694,7 +693,7 @@ func chooseLocation() (float64, float64, string, error) {
 		return 0.0, 0.0, "", err
 	}
 	if choice < 1 || choice > len(results) {
-		return 0.0, 0.0, "", errors.New("Invalid location choice")
+		return 0.0, 0.0, "", errors.New("invalid location choice")
 	}
 	selected := results[choice-1]
 

@@ -310,6 +310,14 @@ func main() {
 			return
 		}
 		showRemainingPrayers(config)
+	case "prayer":
+		isvalidcount := validateArgCount(len(os.Args), 3, "Usage: salahctl prayer <fajr|dhuhr|asr|maghrib|isha>")
+		if !isvalidcount {
+			return
+		}
+		prayerName := os.Args[2]
+		showPrayer(config, prayerName)
+
 	case "--help", "-h":
 		isValidCount := validateArgCount(len(os.Args), 2, usage)
 		if !isValidCount {
@@ -424,6 +432,35 @@ func showNextPrayer(c Config) {
 	fmt.Println()
 	fmt.Printf("Next Prayer: %s at %s\n", prayerName(next), nextTime.Format("3:04 PM"))
 	fmt.Printf("Time remaining: %dh %dm\n", hours, minutes)
+}
+
+func showPrayer(config Config, prayerName string) {
+	prayerTimes, err := calculatePrayerTimes(config)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	var selectedTime time.Time
+	switch prayerName {
+	case "fajr":
+		selectedTime = prayerTimes.Fajr
+	case "dhuhr":
+		selectedTime = prayerTimes.Dhuhr
+	case "asr":
+		selectedTime = prayerTimes.Asr
+	case "maghrib":
+		selectedTime = prayerTimes.Maghrib
+	case "isha":
+		selectedTime = prayerTimes.Isha
+	default:
+		fmt.Println()
+		fmt.Printf("Error: unknown prayer %q\n", prayerName)
+		fmt.Println()
+		fmt.Println("Usage: salahctl prayer <fajr|dhuhr|asr|maghrib|isha>")
+		return
+	}
+	displayName := strings.ToUpper(prayerName[:1]) + prayerName[1:]
+	fmt.Println(displayName, selectedTime.Format("3:04 PM"))
 }
 
 func showTomorrowPrayersTimes(c Config) {
@@ -558,6 +595,7 @@ Commands:
   config method		Update calculation method
   config asr		Update Asr method
   remaining		Show remaining prayers for today
+  prayer <name>		Show the time for a specific prayer
 
 Options:
   -h, --help		Show this help

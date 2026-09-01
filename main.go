@@ -304,6 +304,12 @@ func main() {
 		}
 
 		showPrayerTimesByDate(config, os.Args[2])
+	case "remaining":
+		isValidCount := validateArgCount(len(os.Args), 2, usage)
+		if !isValidCount {
+			return
+		}
+		showRemainingPrayers(config)
 	case "--help", "-h":
 		isValidCount := validateArgCount(len(os.Args), 2, usage)
 		if !isValidCount {
@@ -452,6 +458,40 @@ func showPrayerTimesByDate(c Config, dateString string) {
 
 }
 
+func showRemainingPrayers(config Config) {
+	prayerTimes, err := calculatePrayerTimes(config)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	now := time.Now()
+
+	fmt.Println("Remaining Prayers")
+	fmt.Println()
+
+	if now.Before(prayerTimes.Fajr) {
+		fmt.Println("Fajr:", prayerTimes.Fajr.Format("3:04 PM"))
+	}
+	if now.Before(prayerTimes.Dhuhr) {
+		fmt.Println("Dhuhr:", prayerTimes.Dhuhr.Format("3:04 PM"))
+	}
+	if now.Before(prayerTimes.Asr) {
+		fmt.Println("Asr:", prayerTimes.Asr.Format("3:04 PM"))
+	}
+	if now.Before(prayerTimes.Maghrib) {
+		fmt.Println("Maghrib:", prayerTimes.Maghrib.Format("3:04 PM"))
+	}
+	if now.Before(prayerTimes.Isha) {
+		fmt.Println("Isha", prayerTimes.Isha.Format("3:04 PM"))
+	}
+
+	if now.After(prayerTimes.Isha) {
+		fmt.Println("All prayers are complete for today.")
+	}
+	fmt.Println()
+
+}
+
 func printPrayerTimes(prayerTimes *calc.PrayerTimes) {
 	fmt.Printf("Fajr:    %s\n", prayerTimes.Fajr.Format("3:04 PM"))
 	fmt.Printf("Sunrise: %s\n", prayerTimes.Sunrise.Format("3:04 PM"))
@@ -517,6 +557,7 @@ Commands:
   config location	Update location
   config method		Update calculation method
   config asr		Update Asr method
+  remaining		Show remaining prayers for today
 
 Options:
   -h, --help		Show this help

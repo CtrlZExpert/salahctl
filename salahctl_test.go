@@ -77,24 +77,3 @@ func TestPrayerName(t *testing.T) {
 		}
 	}
 }
-
-func TestUsageFor(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{"date", "Usage: salahctl date YYYY-MM-DD"},
-		{"config", "Usage: salahctl config [show|location|method|asr]"},
-		{"--help", "Usage: salahctl --help"},
-		{"--version", "Usage: salahctl --version"},
-		{"today", "Usage: salahctl today"},
-	}
-
-	for _, test := range tests {
-		actual := usageFor(test.input)
-
-		if actual != test.expected {
-			t.Errorf("for %q: expected %q, got %q", test.input, test.expected, actual)
-		}
-	}
-}

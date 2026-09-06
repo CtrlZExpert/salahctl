@@ -1,0 +1,6 @@
+[Unit]
+Description=Check salahctl prayer notifications
+
+[Service]
+Type=oneshot
+ExecStart=/home/ctrlzexpert/Projects/salahctl/salahctl notify-check

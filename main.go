@@ -101,6 +101,12 @@ func main() {
 			return
 		}
 		showWeeklyPrayerTimes(config)
+	case "notify-check":
+		err := checkPrayerNotification(config)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 
 	case "--help", "-h":
 		isValidCount := validateArgCount(len(os.Args), 2, usage)

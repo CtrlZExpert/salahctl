@@ -11,11 +11,13 @@ import (
 )
 
 type Config struct {
-	Latitude  float64 `toml:"latitude"`
-	Longitude float64 `toml:"longitude"`
-	Timezone  string  `toml:"timezone"`
-	Method    string  `toml:"method"`
-	AsrMethod string  `toml:"asr_method"`
+	Latitude      float64                    `toml:"latitude"`
+	Longitude     float64                    `toml:"longitude"`
+	Timezone      string                     `toml:"timezone"`
+	Method        string                     `toml:"method"`
+	AsrMethod     string                     `toml:"asr_method"`
+	ActiveProfile string                     `toml:"active_profile"`
+	Profiles      map[string]LocationProfile `toml:"profiles"`
 }
 
 func loadConfig() (Config, error) {
@@ -146,11 +148,12 @@ func chooseAsrMethod() string {
 }
 
 func showConfig(config Config) {
-	fmt.Printf("Latitude:   %f\n", config.Latitude)
-	fmt.Printf("Longitude:   %f\n", config.Longitude)
-	fmt.Printf("Timezone:    %s\n", config.Timezone)
-	fmt.Printf("Method:     %s\n", config.Method)
-	fmt.Printf("Asr Method: %s\n", config.AsrMethod)
+	fmt.Printf("Latitude:       %f\n", config.Latitude)
+	fmt.Printf("Longitude:      %f\n", config.Longitude)
+	fmt.Printf("Timezone:       %s\n", config.Timezone)
+	fmt.Printf("Method:         %s\n", config.Method)
+	fmt.Printf("Asr Method:     %s\n", config.AsrMethod)
+	fmt.Printf("Active Profile: %s\n", config.ActiveProfile)
 }
 func runConfig() {
 	latitude, longitude, timezone, err := chooseLocation()

@@ -209,6 +209,79 @@ var asrMethodConfigCmd = &cobra.Command{
 	},
 }
 
+var locationCmd = &cobra.Command{
+	Use:   "location",
+	Short: "Manage location profile",
+}
+
+var locationAddCmd = &cobra.Command{
+	Use:   "add <name>",
+	Short: "Add new location profile",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		config, err := loadConfig()
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+		err = addLocationProfile(config, args[0])
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+	},
+}
+
+var locationListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List location profiles",
+	Args:  cobra.NoArgs,
+	Run: func(cmd *cobra.Command, args []string) {
+		config, err := loadConfig()
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+		listLocationProfile(config)
+	},
+}
+
+var locationUseCmd = &cobra.Command{
+	Use:   "use <name>",
+	Short: "Use location profile",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		config, err := loadConfig()
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+		err = useLocationProfile(config, args[0])
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+	},
+}
+
+var locationRemoveCmd = &cobra.Command{
+	Use:   "remove <name>",
+	Short: "Remove location profile",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		config, err := loadConfig()
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+		err = removeLocationProfile(config, args[0])
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(
 		todayCmd,
@@ -221,6 +294,7 @@ func init() {
 		prayerCmd,
 		dateCmd,
 		configCmd,
+		locationCmd,
 	)
 
 	configCmd.AddCommand(
@@ -228,5 +302,12 @@ func init() {
 		locationConfigCmd,
 		methodConfigCmd,
 		asrMethodConfigCmd,
+	)
+
+	locationCmd.AddCommand(
+		locationAddCmd,
+		locationListCmd,
+		locationUseCmd,
+		locationRemoveCmd,
 	)
 }

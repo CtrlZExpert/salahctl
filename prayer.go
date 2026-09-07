@@ -10,6 +10,42 @@ import (
 	"github.com/MSA-Software-LLC/adhan-go/pkg/util"
 )
 
+func showMonthlyPrayerTimes(config Config) {
+	now := time.Now()
+	firstDay := time.Date(
+		now.Year(),
+		now.Month(),
+		1,
+		0,
+		0,
+		0,
+		0,
+		now.Location(),
+	)
+
+	fmt.Printf("%-8s %-9s %-9s %-9s %-9s %-9s %-9s\n", "Date", "Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha")
+
+	for date := firstDay; date.Month() == now.Month(); date = date.AddDate(0, 0, 1) {
+		prayerTimesByDate, err := calculatePrayerTimeForDate(config, date)
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+		fmt.Printf(
+			"%-8s %-9s %-9s %-9s %-9s %-9s %-9s\n",
+			date.Format("Jan 02"),
+			prayerTimesByDate.Fajr.Format("3:04 PM"),
+			prayerTimesByDate.Sunrise.Format("3:04 PM"),
+			prayerTimesByDate.Dhuhr.Format("3:04 PM"),
+			prayerTimesByDate.Asr.Format("3:04 PM"),
+			prayerTimesByDate.Maghrib.Format("3:04 PM"),
+			prayerTimesByDate.Isha.Format("3:04 PM"),
+		)
+
+	}
+
+}
+
 func calculatePrayerTimeForDate(c Config, date time.Time) (*calc.PrayerTimes, error) {
 
 	dateComponents := data.NewDateComponents(date)

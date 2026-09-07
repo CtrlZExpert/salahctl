@@ -282,6 +282,20 @@ var locationRemoveCmd = &cobra.Command{
 	},
 }
 
+var monthCmd = &cobra.Command{
+	Use:   "month",
+	Short: "Show monthly prayer times",
+	Args:  cobra.NoArgs,
+	Run: func(cmd *cobra.Command, args []string) {
+		config, err := loadConfig()
+		if err != nil {
+			fmt.Println("Error:", err)
+			return
+		}
+		showMonthlyPrayerTimes(config)
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(
 		todayCmd,
@@ -295,6 +309,7 @@ func init() {
 		dateCmd,
 		configCmd,
 		locationCmd,
+		monthCmd,
 	)
 
 	configCmd.AddCommand(

@@ -22,13 +22,18 @@ func showMonthlyPrayerTimes(config Config) {
 		0,
 		now.Location(),
 	)
+	fmt.Println()
+	fmt.Println(titleStyle.Render("Monthly Prayer Times\n"))
+	fmt.Println(mutedStyle.Render(now.Format("January 2006\n")))
+	fmt.Println()
 
-	fmt.Printf("%-8s %-9s %-9s %-9s %-9s %-9s %-9s\n", "Date", "Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha")
+	header := fmt.Sprintf("%-8s %-9s %-9s %-9s %-9s %-9s %-9s\n", "Date", "Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha")
+	fmt.Println(headingStyle.Render(header))
 
 	for date := firstDay; date.Month() == now.Month(); date = date.AddDate(0, 0, 1) {
 		prayerTimesByDate, err := calculatePrayerTimeForDate(config, date)
 		if err != nil {
-			fmt.Println("Error:", err)
+			printError(err)
 			return
 		}
 		fmt.Printf(
@@ -108,41 +113,68 @@ func getNextPrayer(c Config) (calc.Prayer, time.Time, time.Duration, error) {
 func showCurrentPrayer(c Config) {
 	prayerTimes, err := calculatePrayerTimes(c)
 	if err != nil {
-		fmt.Println("Error:", err)
+		printError(err)
 		return
 	}
 	now := time.Now()
 	current := prayerTimes.CurrentPrayer(now)
 	next, nextTime, remaining, err := getNextPrayer(c)
 	if err != nil {
-		fmt.Println("Error:", err)
+		printError(err)
 		return
 	}
 	hours := int(remaining.Hours())
 	minutes := int(remaining.Minutes()) % 60
+	remainingStr := fmt.Sprintf("%dh %dm", hours, minutes)
+	title := titleStyle.Render("Current Prayer")
+
 	fmt.Println()
-	fmt.Printf("Current Prayer: %s\n", prayerName(current))
-	fmt.Printf("Next Prayer: %s at %s\n", prayerName(next), nextTime.Format("3:04 PM"))
-	fmt.Printf("Time remaining: %dh %dm\n", hours, minutes)
+	fmt.Println(title)
+	fmt.Println()
+	fmt.Printf("%s %s\n",
+		labelStyle.Width(17).Render("Current Prayer:"),
+		activeStyle.Render(prayerName(current)),
+	)
+	fmt.Printf("%s %s at %s\n",
+		labelStyle.Width(17).Render("Next Prayer:"),
+		activeStyle.Render(prayerName(next)),
+		valueStyle.Render(nextTime.Format("3:04 PM")),
+	)
+	fmt.Printf("%s %s\n",
+		mutedStyle.Width(17).Render("Time remaining:"),
+		valueStyle.Render(remainingStr),
+	)
 }
 
 func showNextPrayer(c Config) {
 	next, nextTime, remaining, err := getNextPrayer(c)
 	if err != nil {
-		fmt.Println("Error:", err)
+		printError(err)
 		return
 	}
 	hours := int(remaining.Hours())
 	minutes := int(remaining.Minutes()) % 60
+	remainingStr := fmt.Sprintf("%dh %dm", hours, minutes)
+	title := titleStyle.Render("Next Prayer")
+
 	fmt.Println()
-	fmt.Printf("Next Prayer: %s at %s\n", prayerName(next), nextTime.Format("3:04 PM"))
-	fmt.Printf("Time remaining: %dh %dm\n", hours, minutes)
+	fmt.Println(title)
+	fmt.Println()
+	fmt.Printf("%s %s at %s\n",
+		labelStyle.Width(17).Render("Next Prayer:"),
+		activeStyle.Render(prayerName(next)),
+		valueStyle.Render(nextTime.Format("3:04 PM")),
+	)
+	fmt.Printf("%s %s\n",
+		mutedStyle.Width(17).Render("Time remaining:"),
+		valueStyle.Render(remainingStr),
+	)
 }
 
 func showPrayer(config Config, prayerName string) {
 	prayerTimes, err := calculatePrayerTimes(config)
 	if err != nil {
-		fmt.Println("Error:", err)
+		printError(err)
 		return
 	}
 	var selectedTime time.Time
@@ -159,24 +191,32 @@ func showPrayer(config Config, prayerName string) {
 		selectedTime = prayerTimes.Isha
 	default:
 		fmt.Println()
-		fmt.Printf("Error: unknown prayer %q\n", prayerName)
+		errMessage := fmt.Sprintf("Error: unknown prayer %q", prayerName)
+		printErrorMessage(errMessage)
 		fmt.Println()
-		fmt.Println("Usage: salahctl prayer <fajr|dhuhr|asr|maghrib|isha>")
+		fmt.Println(mutedStyle.Render("Usage: salahctl prayer <fajr|dhuhr|asr|maghrib|isha>"))
 		return
 	}
 	displayName := strings.ToUpper(prayerName[:1]) + prayerName[1:]
-	fmt.Println(displayName, selectedTime.Format("3:04 PM"))
+	title := titleStyle.Render(displayName + " Prayer")
+	label := labelStyle.Width(9).Render(displayName + ":")
+	value := valueStyle.Render(selectedTime.Format("3:04 PM"))
+
+	fmt.Println()
+	fmt.Println(title)
+	fmt.Println()
+	fmt.Printf("%s%s\n", label, value)
 }
 
 func showTomorrowPrayersTimes(c Config) {
 	tomorrow := time.Now().AddDate(0, 0, 1)
 	prayerTimesTomorrow, err := calculatePrayerTimeForDate(c, tomorrow)
 	if err != nil {
-		fmt.Println("Error:", err)
+		printError(err)
 		return
 	}
 	fmt.Println()
-	fmt.Println("Tomorrow")
+	fmt.Println(titleStyle.Render("Tomorrow's Prayer Times"))
 	fmt.Println()
 	printPrayerTimes(prayerTimesTomorrow)
 }
@@ -185,16 +225,17 @@ func showPrayerTimesByDate(c Config, dateString string) {
 
 	date, err := time.Parse("2006-01-02", dateString)
 	if err != nil {
-		fmt.Println("Invalid date format. Use YYYY-MM-DD")
+		errMessage := fmt.Sprintln("Invalid date format. Use YYYY-MM-DD")
+		printErrorMessage(errMessage)
 		return
 	}
 	prayerTimesByDate, err := calculatePrayerTimeForDate(c, date)
 	if err != nil {
-		fmt.Println("Error:", err)
+		printError(err)
 		return
 	}
 	fmt.Println()
-	fmt.Println(date.Format("Monday, January 2, 2006"))
+	fmt.Println(titleStyle.Render(date.Format("Monday, January 2, 2006")))
 	fmt.Println()
 	printPrayerTimes(prayerTimesByDate)
 
@@ -206,11 +247,11 @@ func showWeeklyPrayerTimes(c Config) {
 	for i := 0; i < 7; i++ {
 		prayerTimes, err := calculatePrayerTimeForDate(c, date)
 		if err != nil {
-			fmt.Println("Error:", err)
+			printError(err)
 			return
 		}
 
-		fmt.Println(date.Format("Monday, January 2, 2006"))
+		fmt.Println(titleStyle.Render(date.Format("Monday, January 2, 2006")))
 		fmt.Println()
 		printPrayerTimes(prayerTimes)
 		fmt.Println()
@@ -222,7 +263,7 @@ func showWeeklyPrayerTimes(c Config) {
 func showRemainingPrayers(config Config) {
 	prayerTimes, err := calculatePrayerTimes(config)
 	if err != nil {
-		fmt.Println("Error:", err)
+		printError(err)
 		return
 	}
 
@@ -239,29 +280,50 @@ func showRemainingPrayers(config Config) {
 		{"Isha", prayerTimes.Isha},
 	}
 
-	fmt.Println("Remaining Prayers")
+	fmt.Println()
+	fmt.Println(titleStyle.Render("Remaining Prayers"))
 	fmt.Println()
 
 	for _, prayer := range prayers {
 		if now.Before(prayer.time) {
-			fmt.Println(prayer.name+":", prayer.time.Format("3:04 PM"))
+			fmt.Println(labelStyle.Width(9).Render(prayer.name+":"),
+				valueStyle.Render(prayer.time.Format("3:04 PM")),
+			)
 		}
 	}
 
 	if now.After(prayerTimes.Isha) {
-		fmt.Println("All prayers are complete for today.")
+		fmt.Println(successStyle.Render("All prayers are complete for today."))
 	}
 
 	fmt.Println()
 }
 
 func printPrayerTimes(prayerTimes *calc.PrayerTimes) {
-	fmt.Printf("Fajr:    %s\n", prayerTimes.Fajr.Format("3:04 PM"))
-	fmt.Printf("Sunrise: %s\n", prayerTimes.Sunrise.Format("3:04 PM"))
-	fmt.Printf("Dhuhr:   %s\n", prayerTimes.Dhuhr.Format("3:04 PM"))
-	fmt.Printf("Asr:     %s\n", prayerTimes.Asr.Format("3:04 PM"))
-	fmt.Printf("Maghrib: %s\n", prayerTimes.Maghrib.Format("3:04 PM"))
-	fmt.Printf("Isha:    %s\n", prayerTimes.Isha.Format("3:04 PM"))
+	fmt.Printf("%s %s\n",
+		labelStyle.Width(9).Render("Fajr:"),
+		valueStyle.Render(prayerTimes.Fajr.Format("3:04 PM")),
+	)
+	fmt.Printf("%s %s\n",
+		labelStyle.Width(9).Render("Sunrise:"),
+		valueStyle.Render(prayerTimes.Sunrise.Format("3:04 PM")),
+	)
+	fmt.Printf("%s %s\n",
+		labelStyle.Width(9).Render("Dhuhr:"),
+		valueStyle.Render(prayerTimes.Dhuhr.Format("3:04 PM")),
+	)
+	fmt.Printf("%s %s\n",
+		labelStyle.Width(9).Render("Asr:"),
+		valueStyle.Render(prayerTimes.Asr.Format("3:04 PM")),
+	)
+	fmt.Printf("%s %s\n",
+		labelStyle.Width(9).Render("Maghrib:"),
+		valueStyle.Render(prayerTimes.Maghrib.Format("3:04 PM")),
+	)
+	fmt.Printf("%s %s\n",
+		labelStyle.Width(9).Render("Isha:"),
+		valueStyle.Render(prayerTimes.Isha.Format("3:04 PM")),
+	)
 
 }
 
@@ -290,9 +352,12 @@ func prayerName(prayer calc.Prayer) string {
 func showPrayerTimes(c Config) {
 	prayerTimes, err := calculatePrayerTimes(c)
 	if err != nil {
-		fmt.Println("Error:", err)
+		printError(err)
 		return
 	}
+	fmt.Println()
+
+	fmt.Println(titleStyle.Render("Today's Prayer Times"))
 	fmt.Println()
 	printPrayerTimes(prayerTimes)
 }

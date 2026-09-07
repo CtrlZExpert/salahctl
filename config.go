@@ -69,6 +69,28 @@ func parseCalculationMethod(method string) (calc.CalculationMethod, error) {
 		return calc.MUSLIM_WORLD_LEAGUE, nil
 	case "north_america":
 		return calc.NORTH_AMERICA, nil
+	case "egyptian":
+		return calc.EGYPTIAN, nil
+	case "karachi":
+		return calc.KARACHI, nil
+	case "umm_al_qura":
+		return calc.UMM_AL_QURA, nil
+	case "dubai":
+		return calc.DUBAI, nil
+	case "moon_sighting_committee":
+		return calc.MOON_SIGHTING_COMMITTEE, nil
+	case "kuwait":
+		return calc.KUWAIT, nil
+	case "qatar":
+		return calc.QATAR, nil
+	case "singapore":
+		return calc.SINGAPORE, nil
+	case "uoif":
+		return calc.UOIF, nil
+	case "tehran":
+		return calc.TEHRAN, nil
+	case "turkey":
+		return calc.TURKEY, nil
 	default:
 		return 0, fmt.Errorf("unsupported calculation method: %q ", method)
 	}
@@ -91,6 +113,17 @@ func chooseCalculationMethod() string {
 		fmt.Println("Calculation Method")
 		fmt.Println("  1. Muslim World League")
 		fmt.Println("  2. North America")
+		fmt.Println("  3. Egyptian")
+		fmt.Println("  4. Karachi")
+		fmt.Println("  5. Umm Al-Qura")
+		fmt.Println("  6. Dubai")
+		fmt.Println("  7. Moon Sighting Committee")
+		fmt.Println("  8. Kuwait")
+		fmt.Println("  9. Qatar")
+		fmt.Println(" 10. Singapore")
+		fmt.Println(" 11. UOIF")
+		fmt.Println(" 12. Tehran")
+		fmt.Println(" 13. Turkey")
 		fmt.Println()
 		fmt.Print("Choose method: ")
 
@@ -99,7 +132,7 @@ func chooseCalculationMethod() string {
 
 		validChoice, err := strconv.Atoi(choiceAction)
 		if err != nil {
-			fmt.Println("Invalid selection. Enter a number 1-2")
+			fmt.Println("Invalid selection. Enter a number 1-13")
 			continue
 		}
 
@@ -108,14 +141,34 @@ func chooseCalculationMethod() string {
 			return "muslim_world_league"
 		case 2:
 			return "north_america"
+		case 3:
+			return "egyptian"
+		case 4:
+			return "karachi"
+		case 5:
+			return "umm_al_qura"
+		case 6:
+			return "dubai"
+		case 7:
+			return "moon_sighting_committee"
+		case 8:
+			return "kuwait"
+		case 9:
+			return "qatar"
+		case 10:
+			return "singapore"
+		case 11:
+			return "uoif"
+		case 12:
+			return "tehran"
+		case 13:
+			return "turkey"
 		default:
-			fmt.Println("Invalid selection. Enter a number 1-2")
+			fmt.Println("Invalid selection. Enter a number 1-13")
 			continue
 		}
-
 	}
 }
-
 func chooseAsrMethod() string {
 	for {
 		fmt.Println()

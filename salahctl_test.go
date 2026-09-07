@@ -7,32 +7,39 @@ import (
 )
 
 func TestParseCalculationMethod(t *testing.T) {
-	expected := calc.NORTH_AMERICA
-
-	method, err := parseCalculationMethod("north_america")
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
+	tests := []struct {
+		name     string
+		input    string
+		expected calc.CalculationMethod
+	}{
+		{"Muslim World League", "muslim_world_league", calc.MUSLIM_WORLD_LEAGUE},
+		{"North America", "north_america", calc.NORTH_AMERICA},
+		{"Egyptian", "egyptian", calc.EGYPTIAN},
+		{"Karachi", "karachi", calc.KARACHI},
+		{"Umm Al-Qura", "umm_al_qura", calc.UMM_AL_QURA},
+		{"Dubai", "dubai", calc.DUBAI},
+		{"Moon Sighting Committee", "moon_sighting_committee", calc.MOON_SIGHTING_COMMITTEE},
+		{"Kuwait", "kuwait", calc.KUWAIT},
+		{"Qatar", "qatar", calc.QATAR},
+		{"Singapore", "singapore", calc.SINGAPORE},
+		{"UOIF", "uoif", calc.UOIF},
+		{"Tehran", "tehran", calc.TEHRAN},
+		{"Turkey", "turkey", calc.TURKEY},
 	}
 
-	if method != expected {
-		t.Errorf("expected %v, got %v", expected, method)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			method, err := parseCalculationMethod(tt.input)
+			if err != nil {
+				t.Fatalf("expected no error, got %v", err)
+			}
+
+			if method != tt.expected {
+				t.Errorf("expected %v, got %v", tt.expected, method)
+			}
+		})
 	}
 }
-
-func TestParseCalculationMethodMuslimWorldLeague(t *testing.T) {
-	expected := calc.MUSLIM_WORLD_LEAGUE
-
-	method, err := parseCalculationMethod("muslim_world_league")
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
-	}
-
-	if method != expected {
-		t.Errorf("expected %v, got %v", expected, method)
-	}
-
-}
-
 func TestParseAsrMethod(t *testing.T) {
 	tests := []struct {
 		input    string

@@ -40,9 +40,19 @@ func addLocationProfile(config Config, name string) error {
 }
 
 func listLocationProfile(config Config) {
+	fmt.Println()
+	fmt.Println(titleStyle.Render("Location Profiles"))
+	fmt.Println()
+
+	if len(config.Profiles) == 0 {
+		fmt.Println(mutedStyle.Render("No location profiles saved."))
+		return
+	}
+
 	for _, profile := range config.Profiles {
 		if profile.Name == config.ActiveProfile {
-			fmt.Printf("* %s\n", profile.Name)
+			profileText := fmt.Sprintf("* %s\n", profile.Name)
+			fmt.Println(activeStyle.Render(profileText))
 		} else {
 
 			fmt.Printf(" %s\n", profile.Name)

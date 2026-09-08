@@ -110,7 +110,8 @@ func parseAsrMethod(method string) (calc.AsrJuristicMethod, error) {
 func chooseCalculationMethod() string {
 	for {
 		fmt.Println()
-		fmt.Println("Calculation Method")
+		fmt.Println(headingStyle.Render("Calculation Method"))
+		fmt.Println()
 		fmt.Println("  1. Muslim World League")
 		fmt.Println("  2. North America")
 		fmt.Println("  3. Egyptian")
@@ -125,14 +126,15 @@ func chooseCalculationMethod() string {
 		fmt.Println(" 12. Tehran")
 		fmt.Println(" 13. Turkey")
 		fmt.Println()
-		fmt.Print("Choose method: ")
+		fmt.Print(labelStyle.Render("Choose method: "))
 
 		var choiceAction string
 		fmt.Scan(&choiceAction)
 
 		validChoice, err := strconv.Atoi(choiceAction)
 		if err != nil {
-			fmt.Println("Invalid selection. Enter a number 1-13")
+			printErrorMessage("Invalid selection. Enter a number 1-13")
+
 			continue
 		}
 
@@ -164,7 +166,7 @@ func chooseCalculationMethod() string {
 		case 13:
 			return "turkey"
 		default:
-			fmt.Println("Invalid selection. Enter a number 1-13")
+			printErrorMessage("Invalid selection. Enter a number 1-13")
 			continue
 		}
 	}
@@ -172,18 +174,19 @@ func chooseCalculationMethod() string {
 func chooseAsrMethod() string {
 	for {
 		fmt.Println()
-		fmt.Println("Asr Method")
+		fmt.Println(headingStyle.Render("Asr Method"))
+		fmt.Println()
 		fmt.Println("  1. Standard")
 		fmt.Println("  2. Hanafi")
 		fmt.Println()
-		fmt.Print("Choose method: ")
+		fmt.Print(labelStyle.Render("Choose method: "))
 
 		var choiceAction string
 		fmt.Scan(&choiceAction)
 
 		validChoice, err := strconv.Atoi(choiceAction)
 		if err != nil {
-			fmt.Println("Invalid selection. Enter a number 1-2")
+			printErrorMessage("Invalid selection. Enter a number 1-2")
 			continue
 		}
 
@@ -193,7 +196,7 @@ func chooseAsrMethod() string {
 		case 2:
 			return "hanafi"
 		default:
-			fmt.Println("Invalid selection. Enter a number 1-2")
+			printErrorMessage("Invalid selection. Enter a number 1-2")
 			continue
 		}
 
@@ -201,17 +204,46 @@ func chooseAsrMethod() string {
 }
 
 func showConfig(config Config) {
-	fmt.Printf("Latitude:       %f\n", config.Latitude)
-	fmt.Printf("Longitude:      %f\n", config.Longitude)
-	fmt.Printf("Timezone:       %s\n", config.Timezone)
-	fmt.Printf("Method:         %s\n", config.Method)
-	fmt.Printf("Asr Method:     %s\n", config.AsrMethod)
-	fmt.Printf("Active Profile: %s\n", config.ActiveProfile)
+	fmt.Println()
+	fmt.Println(titleStyle.Render("Configuration"))
+	fmt.Println()
+
+	latitude := fmt.Sprintf("%f", config.Latitude)
+	longitude := fmt.Sprintf("%f", config.Longitude)
+	fmt.Printf("%s%s\n",
+		labelStyle.Width(18).Render("Latitude:"),
+		valueStyle.Render(latitude),
+	)
+	fmt.Printf("%s%s\n",
+		labelStyle.Width(18).Render("Longitude:"),
+		valueStyle.Render(longitude),
+	)
+	fmt.Printf("%s%s\n",
+		labelStyle.Width(18).Render("Timezone:"),
+		valueStyle.Render(config.Timezone),
+	)
+	fmt.Printf("%s%s\n",
+		labelStyle.Width(18).Render("Method:"),
+		valueStyle.Render(config.Method),
+	)
+	fmt.Printf("%s%s\n",
+		labelStyle.Width(18).Render("Asr Method:"),
+		valueStyle.Width(18).Render(config.AsrMethod),
+	)
+	fmt.Printf("%s%s\n",
+		labelStyle.Width(18).Render("Active Profile:"),
+		activeStyle.Width(18).Render(config.ActiveProfile),
+	)
 }
 func runConfig() {
+
+	fmt.Println()
+	fmt.Println(titleStyle.Render("Configuration Setup"))
+	fmt.Println()
+
 	latitude, longitude, timezone, err := chooseLocation()
 	if err != nil {
-		fmt.Println("Error:", err)
+		printError(err)
 		return
 	}
 
@@ -228,18 +260,18 @@ func runConfig() {
 
 	err = saveConfig(config)
 	if err != nil {
-		fmt.Println("Error:", err)
+		printError(err)
 		return
 	}
 
-	fmt.Println("Configuration saved successfully")
+	fmt.Println(successStyle.Render("Configuration saved successfully"))
 
 }
 
 func updateLocation(config Config) {
 	latitude, longitude, timezone, err := chooseLocation()
 	if err != nil {
-		fmt.Println("Error:", err)
+		printError(err)
 		return
 	}
 
@@ -249,10 +281,10 @@ func updateLocation(config Config) {
 
 	err = saveConfig(config)
 	if err != nil {
-		fmt.Println("Error:", err)
+		printError(err)
 		return
 	}
-	fmt.Println("Location has successfully been updated")
+	fmt.Println(successStyle.Render("Location has successfully been updated"))
 
 }
 
@@ -261,10 +293,10 @@ func updateCalculationMethod(config Config) {
 	config.Method = method
 	err := saveConfig(config)
 	if err != nil {
-		fmt.Println("Error:", err)
+		printError(err)
 		return
 	}
-	fmt.Println("Method has successfully been updated")
+	fmt.Println(successStyle.Render("Method has successfully been updated"))
 }
 
 func updateAsrMethod(config Config) {
@@ -272,9 +304,9 @@ func updateAsrMethod(config Config) {
 	config.AsrMethod = asrMethod
 	err := saveConfig(config)
 	if err != nil {
-		fmt.Println("Error:", err)
+		printError(err)
 		return
 	}
-	fmt.Println("Asr Method has successfully been updated")
+	fmt.Println(successStyle.Render("Asr Method has successfully been updated"))
 
 }

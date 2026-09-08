@@ -1,12 +1,10 @@
 package main
 
-import (
-	"fmt"
-)
-
 func main() {
+	setupHelp()
+
 	err := rootCmd.Execute()
 	if err != nil {
-		fmt.Println(err)
+		printError(err)
 	}
 }

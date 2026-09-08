@@ -56,7 +56,9 @@ func lookupLocation(location string) ([]LocationResult, error) {
 func chooseLocation() (float64, float64, string, error) {
 	reader := bufio.NewReader(os.Stdin)
 
-	fmt.Print("Location (city, state/country): ")
+	fmt.Println()
+	fmt.Print(labelStyle.Render("Location (city, state/country): "))
+	fmt.Println()
 
 	location, err := reader.ReadString('\n')
 	if err != nil {
@@ -74,7 +76,7 @@ func chooseLocation() (float64, float64, string, error) {
 		fmt.Printf("%d. %s\n", i+1, result.DisplayName)
 	}
 
-	fmt.Print("Choose location: ")
+	fmt.Print(labelStyle.Render("Choose location: "))
 	choiceInput, err := reader.ReadString('\n')
 	if err != nil {
 		return 0.0, 0.0, "", err

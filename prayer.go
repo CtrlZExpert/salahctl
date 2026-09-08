@@ -23,11 +23,11 @@ func showMonthlyPrayerTimes(config Config) {
 		now.Location(),
 	)
 	fmt.Println()
-	fmt.Println(titleStyle.Render("Monthly Prayer Times\n"))
-	fmt.Println(mutedStyle.Render(now.Format("January 2006\n")))
+	fmt.Println(titleStyle.Render("Monthly Prayer Times"))
+	fmt.Println(mutedStyle.Render(now.Format("January 2006")))
 	fmt.Println()
 
-	header := fmt.Sprintf("%-8s %-9s %-9s %-9s %-9s %-9s %-9s\n", "Date", "Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha")
+	header := fmt.Sprintf("%-8s %-9s %-9s %-9s %-9s %-9s %-9s", "Date", "Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha")
 	fmt.Println(headingStyle.Render(header))
 
 	for date := firstDay; date.Month() == now.Month(); date = date.AddDate(0, 0, 1) {
@@ -242,6 +242,10 @@ func showPrayerTimesByDate(c Config, dateString string) {
 }
 
 func showWeeklyPrayerTimes(c Config) {
+	fmt.Println()
+	fmt.Println(titleStyle.Render("Weekly Prayer Times"))
+	fmt.Println()
+
 	date := time.Now()
 
 	for i := 0; i < 7; i++ {

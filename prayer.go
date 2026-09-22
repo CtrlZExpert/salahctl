@@ -144,6 +144,7 @@ func showCurrentPrayer(c Config) {
 		mutedStyle.Width(17).Render("Time remaining:"),
 		valueStyle.Render(remainingStr),
 	)
+	fmt.Printf("%T\n", current)
 }
 
 func showNextPrayer(c Config) {

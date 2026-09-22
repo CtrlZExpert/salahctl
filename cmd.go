@@ -144,6 +144,15 @@ var dateCmd = &cobra.Command{
 	},
 }
 
+var tuiCmd = &cobra.Command{
+	Use:   "tui",
+	Short: "Open the interactive prayer time interface",
+	Args:  cobra.NoArgs,
+	Run: func(cmd *cobra.Command, args []string) {
+		runTUI()
+	},
+}
+
 var configCmd = &cobra.Command{
 	Use:   "config",
 	Short: "Run full configuration setup",
@@ -310,6 +319,7 @@ func init() {
 		configCmd,
 		locationCmd,
 		monthCmd,
+		tuiCmd,
 	)
 
 	configCmd.AddCommand(

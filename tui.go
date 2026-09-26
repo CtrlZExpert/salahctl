@@ -382,16 +382,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q":
 			return m, tea.Quit
 		case "t":
-			m.view = todayView
+			if m.view == todayView || m.view == weekView || m.view == monthView {
+				m.view = todayView
+			}
 		case "w":
-			m.view = weekView
+			if m.view == todayView || m.view == weekView || m.view == monthView {
+				m.view = weekView
+			}
 		case "m":
-			m.view = monthView
+			if m.view == todayView || m.view == weekView || m.view == monthView {
+				m.view = monthView
+			}
 		case "down", "j":
 			if m.view == monthView {
 				visibileRows := m.monthVisibleRows()
 				daysInMonth := daysInCurrentMonth()
 				maxScroll := m.maxMonthScroll(daysInMonth, visibileRows)
+				m.scrollOffset = 0
 				if m.scrollOffset < maxScroll {
 					m.scrollOffset++
 				}

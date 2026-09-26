@@ -17,6 +17,7 @@ type model struct {
 	nextPrayerTime time.Time
 	remaining      time.Duration
 	view           viewMode
+	previousView   viewMode
 	width          int
 	height         int
 	scrollOffset   int
@@ -36,6 +37,7 @@ const (
 	weekView
 	monthView
 	prayerDetailView
+	helpView
 )
 
 func (m model) Init() tea.Cmd {
@@ -53,6 +55,8 @@ func (m model) View() string {
 		return m.renderMonth()
 	case prayerDetailView:
 		return m.renderPrayerDetail()
+	case helpView:
+		return m.renderHelp()
 	}
 
 	return ""
@@ -94,7 +98,7 @@ func (m model) renderToday() string {
 
 	viewBar := m.renderViewBar()
 	scrollBar := mutedStyle.Render("↑/k up • ↓/j down")
-	quitBar := fmt.Sprintf(mutedStyle.Render("[ q ] quit"))
+	quitBar := fmt.Sprintf(mutedStyle.Render("[ ?] Help [ q ] Quit"))
 	screen := fmt.Sprintf(
 		`
 %s
@@ -131,7 +135,7 @@ func (m model) renderPrayerDetail() string {
 	prayerHeading := fmt.Sprint(headingStyle.Render(selected.name))
 	prayerTime := fmt.Sprint(labelStyle.Width(16).Render("Prayer time:") + " " + selected.time.Format("3:04 PM"))
 	title := fmt.Sprint(titleStyle.Render("salahctl"))
-	quitBar := fmt.Sprint(mutedStyle.Render("[ esc ] Back [ q ] quit"))
+	quitBar := fmt.Sprint(mutedStyle.Render("[ esc ] Back [ ? ] Help [ q ] Quit"))
 
 	if selected.time.Before(now) {
 		status = "Passed"
@@ -234,7 +238,7 @@ func (m model) renderWeek() string {
 	title := fmt.Sprint(titleStyle.Render("salahctl"))
 	weekHeading := fmt.Sprint(headingStyle.Render("Weekly Prayer Times"))
 	viewBar := m.renderViewBar()
-	quitBar := fmt.Sprintf(mutedStyle.Render("[ q ] quit"))
+	quitBar := fmt.Sprintf(mutedStyle.Render("[ ? ] Help [ q ] Quit"))
 
 	screen := fmt.Sprintf(`
 
@@ -312,7 +316,7 @@ func (m model) renderMonth() string {
 	monthHeading := fmt.Sprint(headingStyle.Render("Monthly Prayer Times"))
 	viewBar := m.renderViewBar()
 	scrollBar := mutedStyle.Render("↑/k up • ↓/j down")
-	quitBar := fmt.Sprintf(mutedStyle.Render("[ q ] quit"))
+	quitBar := fmt.Sprintf(mutedStyle.Render("[ ? ] Help [ q ] Quit"))
 	screen := fmt.Sprintf(`
 %s
 
@@ -419,6 +423,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "esc":
 			if m.view == prayerDetailView {
 				m.view = todayView
+			} else if m.view == helpView {
+				m.view = m.previousView
+			}
+
+		case "?":
+			if m.view != helpView {
+				m.previousView = m.view
+				m.view = helpView
 			}
 
 		}
@@ -428,6 +440,49 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+func (m model) renderHelp() string {
+	type helpRow struct {
+		key         string
+		description string
+	}
+	title := fmt.Sprint(titleStyle.Render("salahctl"))
+	helpHeading := fmt.Sprint(headingStyle.Render("Help"))
+	rows := []helpRow{
+		{key: "t", description: "Today"},
+		{key: "w", description: "Week"},
+		{key: "m", description: "Month"},
+		{key: "↑/k", description: "Move up"},
+		{key: "↓/j", description: "Move down"},
+		{key: "Enter", description: "Prayer details"},
+		{key: "Esc", description: "Back"},
+		{key: "q", description: "Quit"},
+		{key: "?", description: "Help"},
+	}
+	var help strings.Builder
+	for _, item := range rows {
+		renderedKey := labelStyle.Width(14).Render(item.key)
+		help.WriteString(renderedKey)
+		help.WriteString(item.description)
+		help.WriteString("\n")
+	}
+	helpList := help.String()
+	quitBar := mutedStyle.Render("[ esc ] Back [ q ] Quit ")
+	return fmt.Sprintf(`
+%s
+
+%s
+
+%s
+
+%s`,
+		title,
+		helpHeading,
+		helpList,
+		quitBar,
+	)
+
 }
 
 func runTUI() error {

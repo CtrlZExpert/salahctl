@@ -20,6 +20,7 @@ type model struct {
 	width          int
 	height         int
 	scrollOffset   int
+	selectedPrayer int
 }
 
 type prayerRow struct {
@@ -34,6 +35,7 @@ const (
 	todayView = iota
 	weekView
 	monthView
+	prayerDetailView
 )
 
 func (m model) Init() tea.Cmd {
@@ -49,6 +51,8 @@ func (m model) View() string {
 		return m.renderWeek()
 	case monthView:
 		return m.renderMonth()
+	case prayerDetailView:
+		return m.renderPrayerDetail()
 	}
 
 	return ""
@@ -58,12 +62,17 @@ func (m model) renderToday() string {
 	rows := prayerRows(m.prayerTimes)
 	var prayerTimes strings.Builder
 
-	for _, row := range rows {
+	for i, row := range rows {
 		prayer := formatPrayerRow(row.name, row.time)
 
 		if row.prayer == m.currentPrayer {
 			activeRow := fmt.Sprintf("%-9s %s", row.name, row.time.Format("3:04 PM"))
 			prayer = activeStyle.Render(activeRow)
+		}
+		if i == m.selectedPrayer {
+			prayer = "> " + prayer
+		} else {
+			prayer = " " + prayer
 		}
 
 		prayerTimes.WriteString(prayer)
@@ -84,7 +93,8 @@ func (m model) renderToday() string {
 	todayHeading := fmt.Sprint(headingStyle.Render("Today's Prayer Times"))
 
 	viewBar := m.renderViewBar()
-	quitBar := fmt.Sprintf(mutedStyle.Render("q quit"))
+	scrollBar := mutedStyle.Render("↑/k up • ↓/j down")
+	quitBar := fmt.Sprintf(mutedStyle.Render("[ q ] quit"))
 	screen := fmt.Sprintf(
 		`
 %s
@@ -99,6 +109,7 @@ func (m model) renderToday() string {
 
 %s
 
+%s
 %s`,
 		title,
 		todayHeading,
@@ -106,9 +117,77 @@ func (m model) renderToday() string {
 		nextPrayerLine,
 		timeRemaining,
 		viewBar,
+		scrollBar,
 		quitBar,
 	)
 	return screen
+}
+
+func (m model) renderPrayerDetail() string {
+	status := "Upcoming"
+	now := time.Now()
+	rows := prayerRows(m.prayerTimes)
+	selected := rows[m.selectedPrayer]
+	prayerHeading := fmt.Sprint(headingStyle.Render(selected.name))
+	prayerTime := fmt.Sprint(labelStyle.Width(16).Render("Prayer time:") + " " + selected.time.Format("3:04 PM"))
+	title := fmt.Sprint(titleStyle.Render("salahctl"))
+	quitBar := fmt.Sprint(mutedStyle.Render("[ esc ] Back [ q ] quit"))
+
+	if selected.time.Before(now) {
+		status = "Passed"
+	}
+
+	if selected.prayer == m.currentPrayer && selected.prayer != calc.SUNRISE {
+		status = "Current"
+	}
+
+	timeUntil := selected.time.Sub(now)
+	hoursUntil := int(timeUntil.Hours())
+	minutesUntil := int(timeUntil.Minutes()) % 60
+	timeUntilText := fmt.Sprintf("%dh %dm", hoursUntil, minutesUntil)
+	timeUntilLine := ""
+	if status == "Upcoming" {
+		timeUntilLine = labelStyle.Width(16).Render("Time until:") + " " + timeUntilText
+
+	}
+
+	hoursRemaining := int(m.remaining.Hours())
+	minutesRemaining := int(m.remaining.Minutes()) % 60
+
+	remainingText := fmt.Sprintf("%dh %dm", hoursRemaining, minutesRemaining)
+	nextPrayerName := prayerName(m.nextPrayer)
+	nextPrayerLine := ""
+
+	if status == "Current" {
+		nextPrayerLine = labelStyle.Width(16).Render("Next prayer:") + " " + nextPrayerName + " at " + m.nextPrayerTime.Format("3:04 PM")
+		timeUntilLine = labelStyle.Width(16).Render("Time remaining:") + " " + remainingText
+
+	}
+
+	statusLine := fmt.Sprint(labelStyle.Width(16).Render("Status:") + " " + status)
+
+	screen := fmt.Sprintf(`
+%s
+
+%s
+
+%s
+%s
+%s
+%s
+
+%s`,
+
+		title,
+		prayerHeading,
+		prayerTime,
+		statusLine,
+		nextPrayerLine,
+		timeUntilLine,
+		quitBar)
+
+	return screen
+
 }
 
 func (m model) renderWeek() string {
@@ -155,7 +234,7 @@ func (m model) renderWeek() string {
 	title := fmt.Sprint(titleStyle.Render("salahctl"))
 	weekHeading := fmt.Sprint(headingStyle.Render("Weekly Prayer Times"))
 	viewBar := m.renderViewBar()
-	quitBar := fmt.Sprintf(mutedStyle.Render("q quit"))
+	quitBar := fmt.Sprintf(mutedStyle.Render("[ q ] quit"))
 
 	screen := fmt.Sprintf(`
 
@@ -233,7 +312,7 @@ func (m model) renderMonth() string {
 	monthHeading := fmt.Sprint(headingStyle.Render("Monthly Prayer Times"))
 	viewBar := m.renderViewBar()
 	scrollBar := mutedStyle.Render("↑/k up • ↓/j down")
-	quitBar := fmt.Sprintf(mutedStyle.Render("q quit"))
+	quitBar := fmt.Sprintf(mutedStyle.Render("[ q ] quit"))
 	screen := fmt.Sprintf(`
 %s
 
@@ -313,12 +392,33 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.scrollOffset++
 				}
 			}
+			if m.view == todayView {
+				if m.selectedPrayer < 5 {
+					m.selectedPrayer++
+				}
+			}
+
 		case "up", "k":
 			if m.view == monthView {
 				if m.scrollOffset > 0 {
 					m.scrollOffset--
 
 				}
+
+			}
+
+			if m.view == todayView {
+				if m.selectedPrayer > 0 {
+					m.selectedPrayer--
+				}
+			}
+		case "enter":
+			if m.view == todayView {
+				m.view = prayerDetailView
+			}
+		case "esc":
+			if m.view == prayerDetailView {
+				m.view = todayView
 			}
 
 		}

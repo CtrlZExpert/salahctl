@@ -32,6 +32,10 @@ var activeStyle = lipgloss.NewStyle().
 var successStyle = lipgloss.NewStyle().
 	Foreground(successColor)
 
+var selectedStyle = lipgloss.NewStyle().
+	Foreground(secondaryColor).
+	Bold(true).
+	Underline(true)
 var errorStyle = lipgloss.NewStyle().
 	Foreground(errorColor).
 	Bold(true)

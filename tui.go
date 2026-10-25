@@ -15,6 +15,7 @@ type model struct {
 	currentPrayer  calc.Prayer
 	nextPrayer     calc.Prayer
 	nextPrayerTime time.Time
+	viewDate       time.Time
 	remaining      time.Duration
 	view           viewMode
 	previousView   viewMode
@@ -23,6 +24,8 @@ type model struct {
 	scrollOffset   int
 	selectedPrayer int
 	weekOffset     int
+	monthOffset    int
+	selectedDay    int
 }
 
 type prayerRow struct {
@@ -64,38 +67,47 @@ func (m model) View() string {
 }
 
 func (m model) renderToday() string {
-	rows := prayerRows(m.prayerTimes)
-	var prayerTimes strings.Builder
+	prayerTimes, err := calculatePrayerTimeForDate(m.config, m.viewDate)
+	if err != nil {
+		return errorStyle.Render(err.Error())
+	}
+	rows := prayerRows(prayerTimes)
+	var prayerListBuilder strings.Builder
 
 	for i, row := range rows {
 		prayer := formatPrayerRow(row.name, row.time)
 
-		if row.prayer == m.currentPrayer {
+		if row.prayer == m.currentPrayer && isToday(m.viewDate) {
 			activeRow := fmt.Sprintf("%-9s %s", row.name, row.time.Format("3:04 PM"))
-			prayer = activeStyle.Render(activeRow)
+			prayer = activeRender(activeRow, m.viewDate)
 		}
 		if i == m.selectedPrayer {
 			prayer = "> " + prayer
 		} else {
-			prayer = " " + prayer
+			prayer = "  " + prayer
 		}
 
-		prayerTimes.WriteString(prayer)
-		prayerTimes.WriteString("\n")
+		prayerListBuilder.WriteString(prayer)
+		prayerListBuilder.WriteString("\n")
 	}
-	prayerList := prayerTimes.String()
+	prayerList := prayerListBuilder.String()
 	nextPrayerName := prayerName(m.nextPrayer)
-	nextPrayerLine := labelStyle.Width(16).Render("Next prayer:") + " " + nextPrayerName + " at " + m.nextPrayerTime.Format("3:04 PM")
+	nextPrayerLine := ""
 
 	hours := int(m.remaining.Hours())
 	minutes := int(m.remaining.Minutes()) % 60
 
 	remainingText := fmt.Sprintf("%dh %dm", hours, minutes)
-
-	timeRemaining := labelStyle.Width(16).Render("Time remaining:") + " " + remainingText
+	timeRemaining := ""
 
 	title := titleStyle.Render("salahctl")
-	todayHeading := fmt.Sprint(headingStyle.Render("Today's Prayer Times"))
+	todayHeading := headingStyle.Render("Prayer Times — " + m.viewDate.Format("January 2, 2006"))
+	if isToday(m.viewDate) {
+		todayHeading = headingStyle.Render("Today's Prayer Times")
+		nextPrayerLine = labelStyle.Width(16).Render("Next prayer:") + " " + nextPrayerName + " at " + m.nextPrayerTime.Format("3:04 PM")
+		timeRemaining = labelStyle.Width(16).Render("Time remaining:") + " " + remainingText
+
+	}
 
 	viewBar := m.renderViewBar()
 	scrollBar := mutedStyle.Render("↑/k up • ↓/j down")
@@ -131,11 +143,21 @@ func (m model) renderToday() string {
 func (m model) renderPrayerDetail() string {
 	status := "Upcoming"
 	now := time.Now()
-	rows := prayerRows(m.prayerTimes)
+	prayerTimes, err := calculatePrayerTimeForDate(m.config, m.viewDate)
+	if err != nil {
+		return errorStyle.Render(err.Error())
+
+	}
+	rows := prayerRows(prayerTimes)
 	selected := rows[m.selectedPrayer]
-	prayerHeading := fmt.Sprint(headingStyle.Render(selected.name))
-	prayerTime := fmt.Sprint(labelStyle.Width(16).Render("Prayer time:") + " " + selected.time.Format("3:04 PM"))
+	prayerHeading := headingStyle.Render(selected.name)
+	prayerTime := labelStyle.Width(16).Render("Prayer time:") + " " + selected.time.Format("3:04 PM")
 	title := titleStyle.Render("salahctl")
+	dateLine := ""
+
+	if !isToday(m.viewDate) {
+		dateLine = m.viewDate.Format("January 2, 2006")
+	}
 	footer := mutedStyle.Render("[ esc ] Back [ ? ] Help [ q ] Quit")
 
 	if selected.time.Before(now) {
@@ -151,7 +173,7 @@ func (m model) renderPrayerDetail() string {
 	minutesUntil := int(timeUntil.Minutes()) % 60
 	timeUntilText := fmt.Sprintf("%dh %dm", hoursUntil, minutesUntil)
 	timeUntilLine := ""
-	if status == "Upcoming" {
+	if status == "Upcoming" && isToday(m.viewDate) {
 		timeUntilLine = labelStyle.Width(16).Render("Time until:") + " " + timeUntilText
 
 	}
@@ -163,17 +185,23 @@ func (m model) renderPrayerDetail() string {
 	nextPrayerName := prayerName(m.nextPrayer)
 	nextPrayerLine := ""
 
-	if status == "Current" {
+	if status == "Current" && isToday(m.viewDate) {
 		nextPrayerLine = labelStyle.Width(16).Render("Next prayer:") + " " + nextPrayerName + " at " + m.nextPrayerTime.Format("3:04 PM")
 		timeUntilLine = labelStyle.Width(16).Render("Time remaining:") + " " + remainingText
 
 	}
 
-	statusLine := labelStyle.Width(16).Render("Status:") + " " + status
+	statusLine := ""
+
+	if isToday(m.viewDate) {
+		statusLine = labelStyle.Width(16).Render("Status:") + " " + status
+
+	}
 
 	screen := fmt.Sprintf(`
 %s
 
+%s
 %s
 
 %s
@@ -185,6 +213,7 @@ func (m model) renderPrayerDetail() string {
 
 		title,
 		prayerHeading,
+		dateLine,
 		prayerTime,
 		statusLine,
 		nextPrayerLine,
@@ -264,13 +293,15 @@ func (m model) renderWeek() string {
 }
 
 func (m model) renderMonth() string {
+	now := time.Now()
+	viewDate := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local).AddDate(0, m.monthOffset, 0)
 	visibleRows := m.monthVisibleRows()
-	daysInMonth := daysInCurrentMonth()
+	totalDays := daysInMonth(viewDate)
 	start := m.scrollOffset
 	end := m.scrollOffset + visibleRows
 
-	if end > daysInMonth {
-		end = daysInMonth
+	if end > totalDays {
+		end = totalDays
 	}
 
 	var output strings.Builder
@@ -298,7 +329,12 @@ func (m model) renderMonth() string {
 	output.WriteString("\n")
 
 	for day := start + 1; day <= end; day++ {
-		date := time.Date(time.Now().Year(), time.Now().Month(), day, 0, 0, 0, 0, time.Now().Location())
+		date := time.Date(viewDate.Year(),
+			viewDate.Month(),
+			day,
+			0, 0, 0, 0,
+			viewDate.Location(),
+		)
 		dayName := date.Format("Mon")
 
 		prayerTimes, err := calculatePrayerTimeForDate(m.config, date)
@@ -307,6 +343,12 @@ func (m model) renderMonth() string {
 		}
 		formattedTimes := formatPrayerTimeRow(prayerTimes)
 		row := fmt.Sprintf("%s %s %s", dayName, date.Format("Jan 02"), formattedTimes)
+		if day == m.selectedDay {
+			row = "> " + row
+		} else {
+			row = "  " + row
+		}
+
 		renderedRow := activeRender(row, date)
 		output.WriteString(renderedRow)
 		output.WriteString("\n")
@@ -314,9 +356,9 @@ func (m model) renderMonth() string {
 	}
 	outputList := output.String()
 	title := titleStyle.Render("salahctl")
-	monthHeading := headingStyle.Render("Monthly Prayer Times")
+	monthHeading := headingStyle.Render("Monthly Prayer Times  — " + viewDate.Format("January 2006"))
 	viewBar := m.renderViewBar()
-	scrollBar := mutedStyle.Render("↑/k up • ↓/j down")
+	scrollBar := mutedStyle.Render("←/h previous • →/l next • ↑/k up • ↓/j down")
 	footer := mutedStyle.Render("[ ? ] Help [ q ] Quit")
 	screen := fmt.Sprintf(`
 %s
@@ -353,9 +395,9 @@ func (m model) renderHelp() string {
 		{key: "m", description: "Month"},
 		{key: "↑/k", description: "Move up"},
 		{key: "↓/j", description: "Move down"},
-		{key: "←/h", description: "Previous week"},
-		{key: "→/l", description: "Next week"},
-		{key: "Enter", description: "Prayer details"},
+		{key: "←/h", description: "Previous week/month"},
+		{key: "→/l", description: "Next week/month"},
+		{key: "Enter", description: "Open selected day / Prayer details"},
 		{key: "Esc", description: "Back"},
 		{key: "q", description: "Quit"},
 		{key: "?", description: "Help"},
@@ -430,6 +472,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "t":
 			if m.view == todayView || m.view == weekView || m.view == monthView {
 				m.view = todayView
+				m.viewDate = time.Now()
 			}
 		case "w":
 			if m.view == todayView || m.view == weekView || m.view == monthView {
@@ -442,11 +485,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "down", "j":
 			if m.view == monthView {
 				visibileRows := m.monthVisibleRows()
-				daysInMonth := daysInCurrentMonth()
-				maxScroll := m.maxMonthScroll(daysInMonth, visibileRows)
-				m.scrollOffset = 0
+				viewDate := time.Now().AddDate(0, m.monthOffset, 0)
+				totalDays := daysInMonth(viewDate)
+				maxScroll := m.maxMonthScroll(totalDays, visibileRows)
 				if m.scrollOffset < maxScroll {
 					m.scrollOffset++
+				}
+				if m.selectedDay < totalDays {
+					m.selectedDay++
 				}
 			}
 			if m.view == todayView {
@@ -461,6 +507,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.scrollOffset--
 
 				}
+				if m.selectedDay > 1 {
+					m.selectedDay--
+				}
 
 			}
 
@@ -469,14 +518,46 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.selectedPrayer--
 				}
 			}
+		case "right", "l":
+			if m.view == weekView {
+				m.weekOffset++
+			}
+			if m.view == monthView {
+				m.monthOffset++
+				m.scrollOffset = 0
+			}
+		case "left", "h":
+			if m.view == weekView {
+				m.weekOffset--
+			}
+			if m.view == monthView {
+				m.monthOffset--
+				m.scrollOffset = 0
+			}
+
 		case "enter":
 			if m.view == todayView {
 				m.view = prayerDetailView
+			}
+			if m.view == monthView {
+				selectedDate := time.Date(
+					time.Now().Year(),
+					time.Now().Month()+time.Month(m.monthOffset),
+					m.selectedDay,
+					0, 0, 0, 0,
+					time.Local,
+				)
+				m.viewDate = selectedDate
+				m.previousView = m.view
+				m.view = todayView
+
 			}
 		case "esc":
 			if m.view == prayerDetailView {
 				m.view = todayView
 			} else if m.view == helpView {
+				m.view = m.previousView
+			} else if m.view == todayView && m.previousView == monthView {
 				m.view = m.previousView
 			}
 
@@ -484,14 +565,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.view != helpView {
 				m.previousView = m.view
 				m.view = helpView
-			}
-		case "right", "l":
-			if m.view == weekView {
-				m.weekOffset++
-			}
-		case "left", "h":
-			if m.view == weekView {
-				m.weekOffset--
 			}
 
 		}
@@ -525,9 +598,11 @@ func runTUI() error {
 		prayerTimes:    prayerTimes,
 		currentPrayer:  currentPrayer,
 		nextPrayer:     nextPrayer,
+		viewDate:       time.Now(),
 		nextPrayerTime: nextPrayerTime,
 		remaining:      remaining,
 		view:           todayView,
+		selectedDay:    time.Now().Day(),
 	}
 	p := tea.NewProgram(m, tea.WithAltScreen())
 	_, err = p.Run()
@@ -577,20 +652,34 @@ func formatPrayerTimeRow(prayerTimes *calc.PrayerTimes) string {
 	return row.String()
 }
 
-func daysInCurrentMonth() int {
-	now := time.Now()
-	year := now.Year()
-	month := now.Month()
-	daysInMonth := time.Date(year, month, 1, 0, 0, 0, 0, now.Location()).AddDate(0, 1, -1).Day()
-	return daysInMonth
+func daysInMonth(date time.Time) int {
+	firstDay := time.Date(
+		date.Year(),
+		date.Month(),
+		1,
+		0, 0, 0, 0,
+		date.Location(),
+	)
+	lastDay := firstDay.AddDate(0, 1, -1)
+
+	return lastDay.Day()
 }
 
 func activeRender(text string, date time.Time) string {
+	if isToday(date) {
+		return activeStyle.Render(text)
+
+	}
+	return text
+}
+
+func isToday(date time.Time) bool {
 	now := time.Now()
 	if date.Year() == now.Year() &&
 		date.Month() == now.Month() &&
 		date.Day() == now.Day() {
-		return activeStyle.Render(text)
+		return true
 	}
-	return text
+
+	return false
 }

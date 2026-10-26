@@ -16,6 +16,7 @@ type model struct {
 	nextPrayer     calc.Prayer
 	nextPrayerTime time.Time
 	viewDate       time.Time
+	prayerDate     time.Time
 	remaining      time.Duration
 	view           viewMode
 	previousView   viewMode
@@ -35,6 +36,7 @@ type prayerRow struct {
 }
 
 type viewMode int
+type tickMsg time.Time
 
 const (
 	todayView = iota
@@ -45,7 +47,13 @@ const (
 )
 
 func (m model) Init() tea.Cmd {
-	return nil
+	return tickCmd()
+}
+
+func tickCmd() tea.Cmd {
+	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
+		return tickMsg(t)
+	})
 }
 
 func (m model) View() string {
@@ -465,6 +473,37 @@ func (m model) maxMonthScroll(daysInMonth int, visibleRows int) int {
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tickMsg:
+		if !isToday(m.prayerDate) {
+
+			prayerTimes, err := calculatePrayerTimes(m.config)
+			if err != nil {
+				return m, tickCmd()
+			}
+
+			if m.prayerDate.Year() == m.viewDate.Year() &&
+				m.prayerDate.Month() == m.viewDate.Month() &&
+				m.prayerDate.Day() == m.viewDate.Day() {
+				m.viewDate = time.Now()
+			}
+
+			m.prayerTimes = prayerTimes
+			m.prayerDate = time.Now()
+			m.currentPrayer = prayerTimes.CurrentPrayer(time.Now())
+		}
+		m.remaining = time.Until(m.nextPrayerTime)
+		if m.remaining <= 0 {
+			nextPrayer, nextPrayerTime, remaining, err := getNextPrayer(m.config)
+			if err != nil {
+				return m, tickCmd()
+			}
+			m.nextPrayer = nextPrayer
+			m.nextPrayerTime = nextPrayerTime
+			m.remaining = remaining
+			m.currentPrayer = m.prayerTimes.CurrentPrayer(time.Now())
+
+		}
+		return m, tickCmd()
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q":
@@ -479,13 +518,28 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.view = weekView
 			}
 		case "m":
-			if m.view == todayView || m.view == weekView || m.view == monthView {
+			if m.view == todayView || m.view == weekView {
+				visibleRows := m.monthVisibleRows()
+				m.selectedDay = time.Now().Day()
+				m.scrollOffset = m.selectedDay - 1 - (visibleRows / 2)
+				if m.scrollOffset < 0 {
+					m.scrollOffset = 0
+				}
+				totalDays := daysInMonth(time.Now())
+				maxScroll := m.maxMonthScroll(totalDays, visibleRows)
+				if m.scrollOffset > maxScroll {
+					m.scrollOffset = maxScroll
+				}
+				if maxScroll < 0 {
+					maxScroll = 0
+				}
 				m.view = monthView
 			}
 		case "down", "j":
 			if m.view == monthView {
 				visibileRows := m.monthVisibleRows()
-				viewDate := time.Now().AddDate(0, m.monthOffset, 0)
+				now := time.Now()
+				viewDate := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.Local).AddDate(0, m.monthOffset, 0)
 				totalDays := daysInMonth(viewDate)
 				maxScroll := m.maxMonthScroll(totalDays, visibileRows)
 				if m.scrollOffset < maxScroll {
@@ -525,6 +579,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.view == monthView {
 				m.monthOffset++
 				m.scrollOffset = 0
+				m.selectedDay = 1
 			}
 		case "left", "h":
 			if m.view == weekView {
@@ -533,6 +588,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.view == monthView {
 				m.monthOffset--
 				m.scrollOffset = 0
+				m.selectedDay = 1
 			}
 
 		case "enter":
@@ -599,10 +655,18 @@ func runTUI() error {
 		currentPrayer:  currentPrayer,
 		nextPrayer:     nextPrayer,
 		viewDate:       time.Now(),
+		prayerDate:     time.Now(),
 		nextPrayerTime: nextPrayerTime,
 		remaining:      remaining,
 		view:           todayView,
 		selectedDay:    time.Now().Day(),
+	}
+	for i, prayer := range prayerRows(m.prayerTimes) {
+		if prayer.prayer == m.currentPrayer {
+			m.selectedPrayer = i
+			break
+		}
+
 	}
 	p := tea.NewProgram(m, tea.WithAltScreen())
 	_, err = p.Run()
